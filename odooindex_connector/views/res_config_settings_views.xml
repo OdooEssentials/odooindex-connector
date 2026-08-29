@@ -6,12 +6,7 @@
         <field name="inherit_id" ref="base.res_config_settings_view_form" />
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
-                <app
-                    data-string="OdooIndex"
-                    id="odooindex_connector"
-                    string="OdooIndex"
-                    data-key="odooindex_connector"
-                >
+                <app string="OdooIndex" name="odooindex_connector">
                     <block title="Configuration">
                         <setting
                             string="Connection"
