@@ -21,7 +21,12 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
     _description = "OdooIndex Pairing Wizard"
 
     instance_name = fields.Char(
-        default=lambda self: self.env.cr.dbname,
+        default=lambda self: (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param("odooindex_connector.instance_name")
+            or self.env.cr.dbname
+        ),
     )
     pairing_id = fields.Char(string="Pairing ID")
     pairing_url = fields.Char(string="Pairing URL")
@@ -41,6 +46,7 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
         default="draft",
     )
     pin = fields.Char(string="Handshake PIN")
+    pairing_secret = fields.Char()
     message = fields.Char()
 
     @api.model
@@ -113,7 +119,12 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
             },
         )
 
+        self.env["ir.config_parameter"].sudo().set_param(
+            "odooindex_connector.instance_name",
+            self.instance_name or self.env.cr.dbname,
+        )
         self.pairing_id = result.get("pairing_id")
+        self.pairing_secret = result.get("pairing_secret")
         self.pairing_url = result.get("pairing_url")
         self.status = "pending"
         self.message = self.env._(
@@ -155,6 +166,7 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
             method="POST",
             payload={
                 "pairing_id": self.pairing_id,
+                "pairing_secret": self.pairing_secret,
                 "pin": self.pin,
             },
         )
