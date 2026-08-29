@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="res_config_settings_view_form_inherit_odooindex" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.odooindex</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app
+                    data-string="OdooIndex"
+                    id="odooindex_connector"
+                    string="OdooIndex"
+                    data-key="odooindex_connector"
+                >
+                    <block title="Configuration">
+                        <setting
+                            string="Connection"
+                            help="Manage the connection to OdooIndex"
+                        >
+                            <button
+                                name="action_open_odooindex_pair_wizard"
+                                type="object"
+                                string="Connect to OdooIndex"
+                                class="btn-primary me-2"
+                            />
+                            <button
+                                name="action_sync_modules"
+                                type="object"
+                                string="Sync Now"
+                                class="btn-secondary"
+                            />
+                        </setting>
+                        <setting string="API Token" help="Your OdooIndex API token">
+                            <field name="odooindex_api_token" password="True" />
+                        </setting>
+                        <setting
+                            string="Target Version"
+                            help="Target Odoo version for migration analysis"
+                        >
+                            <field name="odooindex_target_version" />
+                        </setting>
+                        <setting
+                            string="Instance Name"
+                            help="Name shown on the OdooIndex instance list"
+                        >
+                            <field name="odooindex_instance_name" />
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

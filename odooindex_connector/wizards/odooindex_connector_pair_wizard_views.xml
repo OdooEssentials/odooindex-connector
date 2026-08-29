@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="odooindex_connector_pair_wizard_form" model="ir.ui.view">
+        <field name="name">odooindex.connector.pair.wizard.form</field>
+        <field name="model">odooindex.connector.pair.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Connect to OdooIndex">
+                <sheet>
+                    <group>
+                        <field name="instance_name" />
+                    </group>
+                    <div invisible="status != 'pending'" class="oe_inline">
+                        <p class="text-muted">
+              Scan the QR code or open the link on any device and sign in with your OdooIndex account.
+            </p>
+                        <field name="pairing_url" widget="url" readonly="1" />
+                        <field name="qr_code" widget="image" readonly="1" nolabel="1" />
+                    </div>
+                    <div invisible="status != 'awaiting_pin'" class="oe_inline">
+                        <p class="text-muted">
+              Enter the handshake PIN shown on the site.
+            </p>
+                        <field name="pin" />
+                    </div>
+                    <div invisible="status == 'draft'" class="oe_inline">
+                        <field name="message" readonly="1" />
+                    </div>
+                </sheet>
+                <footer>
+                    <button
+                        name="action_start_pairing"
+                        string="Start Pairing"
+                        type="object"
+                        class="btn-primary"
+                        invisible="status != 'draft'"
+                    />
+                    <button
+                        name="action_check_status"
+                        string="Check Login"
+                        type="object"
+                        invisible="status != 'pending' and status != 'awaiting_pin'"
+                    />
+                    <button
+                        name="action_verify_pin"
+                        string="Verify PIN"
+                        type="object"
+                        class="btn-primary"
+                        invisible="status != 'awaiting_pin'"
+                    />
+                    <button string="Cancel" class="btn-secondary" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

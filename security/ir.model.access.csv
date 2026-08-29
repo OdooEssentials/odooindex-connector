@@ -1,6 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_odooindex_module_info_user,odooindex.module.info.user,model_odooindex_module_info,base.group_user,1,0,0,0
-access_odooindex_module_info_system,odooindex.module.info.system,model_odooindex_module_info,base.group_system,1,1,1,1
-access_odooindex_module_pr_user,odooindex.module.pr.user,model_odooindex_module_pr,base.group_user,1,0,0,0
-access_odooindex_module_pr_system,odooindex.module.pr.system,model_odooindex_module_pr,base.group_system,1,1,1,1
-access_odooindex_connector_pair_wizard_system,odooindex.connector.pair.wizard.system,model_odooindex_connector_pair_wizard,base.group_system,1,1,1,1

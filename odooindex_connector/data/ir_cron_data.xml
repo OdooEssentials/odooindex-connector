@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo noupdate="1">
+    <record id="ir_cron_odooindex_sync" model="ir.cron">
+        <field name="name">OdooIndex: sync modules</field>
+        <field name="model_id" ref="model_ir_module_module" />
+        <field name="state">code</field>
+        <field name="code">model.action_sync_cron()</field>
+        <field name="user_id" ref="base.user_root" />
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True" />
+    </record>
+</odoo>
