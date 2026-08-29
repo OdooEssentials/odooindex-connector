@@ -26,7 +26,7 @@
         <field name="model">ir.module.module</field>
         <field name="inherit_id" ref="base.view_module_filter" />
         <field name="arch" type="xml">
-            <filter name="apps" position="before">
+            <field name="name" position="after">
                 <separator />
                 <filter
                     name="odooindex_has_update"
@@ -49,7 +49,7 @@
                     domain="[('odooindex_pr_count', '>', 0)]"
                 />
                 <separator />
-            </filter>
+            </field>
         </field>
     </record>
 </odoo>
