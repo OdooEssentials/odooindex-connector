@@ -12,7 +12,7 @@
         "data/ir_cron_data.xml",
         "views/res_config_settings_views.xml",
         "wizards/odooindex_connector_pair_wizard_views.xml",
-        "views/ir_module_module_views.xml",
+        "views/odooindex_module_report_views.xml",
     ],
     "installable": True,
     "application": False,
