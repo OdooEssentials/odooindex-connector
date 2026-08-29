@@ -7,30 +7,29 @@
       <form string="Connect to OdooIndex">
         <sheet>
           <group>
-            <field name="api_url" placeholder="https://odooindex.com/api/v1"/>
             <field name="instance_name"/>
           </group>
-          <div attrs="{'invisible': [('status', '!=', 'pending')]}" class="oe_inline">
+          <div invisible="status != 'pending'" class="oe_inline">
             <p class="text-muted">
               Scan the QR code or open the link on any device and sign in with your OdooIndex account.
             </p>
             <field name="pairing_url" widget="url" readonly="1"/>
             <field name="qr_code" widget="image" readonly="1" nolabel="1"/>
           </div>
-          <div attrs="{'invisible': [('status', '!=', 'awaiting_pin')]}" class="oe_inline">
+          <div invisible="status != 'awaiting_pin'" class="oe_inline">
             <p class="text-muted">
               Enter the handshake PIN shown on the site.
             </p>
             <field name="pin"/>
           </div>
-          <div attrs="{'invisible': [('status', '=', 'draft')]}" class="oe_inline">
+          <div invisible="status == 'draft'" class="oe_inline">
             <field name="message" readonly="1"/>
           </div>
         </sheet>
         <footer>
-          <button name="action_start_pairing" string="Start Pairing" type="object" class="btn-primary" attrs="{'invisible': [('status', '!=', 'draft')]}"/>
-          <button name="action_check_status" string="Check Login" type="object" attrs="{'invisible': [('status', 'not in', ('pending', 'awaiting_pin'))]}"/>
-          <button name="action_verify_pin" string="Verify PIN" type="object" class="btn-primary" attrs="{'invisible': [('status', '!=', 'awaiting_pin')]}"/>
+          <button name="action_start_pairing" string="Start Pairing" type="object" class="btn-primary" invisible="status != 'draft'"/>
+          <button name="action_check_status" string="Check Login" type="object" invisible="status != 'pending' and status != 'awaiting_pin'"/>
+          <button name="action_verify_pin" string="Verify PIN" type="object" class="btn-primary" invisible="status != 'awaiting_pin'"/>
           <button string="Cancel" class="btn-secondary" special="cancel"/>
         </footer>
       </form>

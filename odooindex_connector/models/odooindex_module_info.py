@@ -1,4 +1,5 @@
 import json
+import logging
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -7,6 +8,10 @@ import odoo
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
+
+ODOOINDEX_API_URL = "https://odooindex.com/api/v1"
 
 
 class OdooIndexModuleInfo(models.Model):
@@ -68,7 +73,6 @@ class OdooIndexModuleInfo(models.Model):
         """Read the connector settings from ir.config_parameter."""
         icp = self.env["ir.config_parameter"].sudo()
         return {
-            "api_url": (icp.get_param("odooindex_connector.api_url") or "").rstrip("/"),
             "api_token": icp.get_param("odooindex_connector.api_token") or "",
             "target_version": icp.get_param("odooindex_connector.target_version") or "",
         }
@@ -82,10 +86,10 @@ class OdooIndexModuleInfo(models.Model):
     def _odooindex_request(self, path, method="GET", payload=None):
         """Make an authenticated HTTPS request to the OdooIndex API."""
         config = self._get_config()
-        if not config["api_url"] or not config["api_token"]:
-            raise UserError(_("OdooIndex API URL and token must be configured."))
+        if not config["api_token"]:
+            raise UserError(_("OdooIndex API token must be configured."))
 
-        url = "{}{}".format(config["api_url"], path)
+        url = "{}{}".format(ODOOINDEX_API_URL, path)
         data = None
         headers = {
             "Authorization": "Bearer {}".format(config["api_token"]),
@@ -142,9 +146,8 @@ class OdooIndexModuleInfo(models.Model):
     def _upload_inventory(self):
         """Upload the current installed module inventory to OdooIndex."""
         payload = self._build_inventory_payload()
-        uuid = payload["uuid"]
         return self._odooindex_request(
-            "/instances/{}/inventory".format(uuid),
+            "/instances/inventory",
             method="POST",
             payload=payload,
         )
@@ -216,3 +219,20 @@ class OdooIndexModuleInfo(models.Model):
         updates = self._download_updates()
         self._apply_updates(updates)
         return True
+
+    @api.model
+    def action_sync_cron(self):
+        """Run the full sync from the cron, skipping neutralized databases."""
+        is_neutralized = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param("database.is_neutralized", "False")
+            .lower()
+            == "true"
+        )
+        if is_neutralized:
+            _logger.warning(
+                "OdooIndex sync skipped because the database is neutralized."
+            )
+            return False
+        return self.action_sync()

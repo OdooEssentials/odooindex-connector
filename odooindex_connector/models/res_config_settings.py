@@ -4,13 +4,8 @@ from odoo import _, fields, models
 class ResConfigSettings(models.TransientModel):
     _inherit = "res.config.settings"
 
-    odooindex_api_url = fields.Char(
-        string="OdooIndex API URL",
-        config_parameter="odooindex_connector.api_url",
-        default="https://odooindex.com/api/v1",
-    )
     odooindex_api_token = fields.Char(
-        string="OdooIndex API Token",
+        string="API Token",
         config_parameter="odooindex_connector.api_token",
         password=True,
     )
@@ -29,12 +24,21 @@ class ResConfigSettings(models.TransientModel):
             "res_model": "odooindex.connector.pair.wizard",
             "view_mode": "form",
             "target": "new",
-            "context": {
-                "default_api_url": (
-                    self.env["ir.config_parameter"]
-                    .sudo()
-                    .get_param("odooindex_connector.api_url")
-                    or "https://odooindex.com/api/v1"
+        }
+
+    def action_sync_modules(self):
+        """Trigger a manual OdooIndex sync and show a notification."""
+        self.ensure_one()
+        self.env["odooindex.module.info"].action_sync()
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("OdooIndex sync"),
+                "message": _(
+                    "Module inventory and updates have been synchronized."
                 ),
+                "type": "success",
+                "sticky": False,
             },
         }

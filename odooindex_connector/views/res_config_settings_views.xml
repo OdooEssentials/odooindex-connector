@@ -12,10 +12,7 @@
             <div class="col-12 col-lg-6 o_setting_box">
               <div class="o_setting_right_pane">
                 <button name="action_open_odooindex_pair_wizard" type="object" string="Connect to OdooIndex" class="btn-primary"/>
-                <div class="content-group">
-                  <span class="o_form_label">API URL</span>
-                  <field name="odooindex_api_url"/>
-                </div>
+                <button name="action_sync_modules" type="object" string="Sync Now" class="btn-secondary"/>
                 <div class="content-group">
                   <span class="o_form_label">API Token</span>
                   <field name="odooindex_api_token" password="True"/>
