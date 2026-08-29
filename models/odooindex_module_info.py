@@ -3,6 +3,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import odoo
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
@@ -63,6 +65,7 @@ class OdooIndexModuleInfo(models.Model):
 
     @api.model
     def _get_config(self):
+        """Read the connector settings from ir.config_parameter."""
         icp = self.env["ir.config_parameter"].sudo()
         return {
             "api_url": (icp.get_param("odooindex_connector.api_url") or "").rstrip("/"),
@@ -72,10 +75,12 @@ class OdooIndexModuleInfo(models.Model):
 
     @api.model
     def _get_db_uuid(self):
+        """Return the stable database UUID that identifies this instance."""
         return self.env["ir.config_parameter"].sudo().get_param("database.uuid")
 
     @api.model
     def _odooindex_request(self, path, method="GET", payload=None):
+        """Make an authenticated HTTPS request to the OdooIndex API."""
         config = self._get_config()
         if not config["api_url"] or not config["api_token"]:
             raise UserError(_("OdooIndex API URL and token must be configured."))
@@ -104,6 +109,7 @@ class OdooIndexModuleInfo(models.Model):
 
     @api.model
     def _build_inventory_payload(self):
+        """Build the payload sent to OdooIndex: only module metadata."""
         uuid = self._get_db_uuid()
         if not uuid:
             raise UserError(_("Database UUID not found."))
@@ -126,12 +132,15 @@ class OdooIndexModuleInfo(models.Model):
 
         return {
             "uuid": uuid,
+            "name": self.env.cr.dbname,
+            "odoo_version": odoo.release.series,
             "target_version": config["target_version"],
             "modules": modules,
         }
 
     @api.model
     def _upload_inventory(self):
+        """Upload the current installed module inventory to OdooIndex."""
         payload = self._build_inventory_payload()
         uuid = payload["uuid"]
         return self._odooindex_request(
@@ -142,6 +151,7 @@ class OdooIndexModuleInfo(models.Model):
 
     @api.model
     def _download_updates(self):
+        """Download migration/update information for the configured target version."""
         uuid = self._get_db_uuid()
         if not uuid:
             raise UserError(_("Database UUID not found."))
@@ -157,6 +167,7 @@ class OdooIndexModuleInfo(models.Model):
 
     @api.model
     def _apply_updates(self, updates):
+        """Persist the update/migration information returned by OdooIndex."""
         if isinstance(updates, dict):
             updates = updates.get("updates", [])
         if not updates:
@@ -200,6 +211,7 @@ class OdooIndexModuleInfo(models.Model):
 
     @api.model
     def action_sync(self):
+        """Run the full sync: upload inventory then download updates."""
         self._upload_inventory()
         updates = self._download_updates()
         self._apply_updates(updates)
