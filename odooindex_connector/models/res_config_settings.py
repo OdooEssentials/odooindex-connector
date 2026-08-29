@@ -7,7 +7,6 @@ class ResConfigSettings(models.TransientModel):
     odooindex_api_token = fields.Char(
         string="API Token",
         config_parameter="odooindex_connector.api_token",
-        password=True,
     )
     odooindex_target_version = fields.Char(
         string="Target Odoo Version",

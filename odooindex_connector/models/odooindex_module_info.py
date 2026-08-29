@@ -52,18 +52,14 @@ class OdooIndexModuleInfo(models.Model):
     )
     last_sync = fields.Datetime()
 
-    _sql_constraints = [
-        (
-            "module_id_unique",
-            "unique(module_id)",
-            "A module can only have one OdooIndex info record.",
-        ),
-        (
-            "name_unique",
-            "unique(name)",
-            "A module technical name can only be tracked once.",
-        ),
-    ]
+    _module_id_unique = models.Constraint(
+        "UNIQUE(module_id)",
+        "A module can only have one OdooIndex info record.",
+    )
+    _name_unique = models.Constraint(
+        "UNIQUE(name)",
+        "A module technical name can only be tracked once.",
+    )
 
     @api.model
     def _get_config(self):
