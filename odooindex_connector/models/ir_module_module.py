@@ -115,11 +115,11 @@ class IrModuleModule(models.Model):
             modules.append(
                 {
                     "name": module.name,
+                    "shortdesc": module.shortdesc or "",
                     "version": module.latest_version or "",
                     "author": module.author or "",
                     "website": module.website or "",
                     "license": module.license or "",
-                    "summary": module.summary or "",
                 }
             )
 

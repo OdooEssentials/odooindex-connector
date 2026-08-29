@@ -39,7 +39,7 @@ A scheduled action runs ``ir.module.module.action_sync_cron()`` once a day (acti
 
 1. **Upload inventory**
    - ``POST /instances/inventory``
-   - Payload: ``uuid``, ``target_version``, and the list of installed modules with ``name``, ``version``, ``author``, ``website``, ``license``, and ``summary``.
+   - Payload: ``uuid``, ``target_version``, and the list of installed modules with ``name``, ``shortdesc``, ``version``, ``author``, ``website``, and ``license``.
 2. **Download updates**
    - ``POST /instances/updates``
    - Payload: ``uuid`` and ``target_version``.
@@ -55,7 +55,7 @@ This section explains, in plain language, what the connector does with your data
 What the module does
 ~~~~~~~~~~~~~~~~~~~~
 
-- It sends a list of the *installed modules* on your Odoo instance (names, versions, authors, licenses and short summaries) to OdooIndex.com.
+- It sends a list of the *installed modules* on your Odoo instance (names, short descriptions, versions, authors and licenses) to OdooIndex.com.
 - It sends your Odoo ``database.uuid``. This is a random-looking identifier Odoo creates for the database; it is used so OdooIndex can match the uploaded list to your account.
 - It does **not** send business records, customer data, documents, emails, passwords, user lists, or any information from inside the modules.
 - It downloads migration and update information for those modules (e.g. "module X is ready for Odoo 19.0") and stores it inside your Odoo database.
@@ -71,7 +71,9 @@ What could go wrong?
 ~~~~~~~~~~~~~~~~~~~~
 
 - If the API token stored in your Odoo database was leaked, an attacker could upload a fake module list or read migration status for that instance. They could **not** access your Odoo server or business data, because the token only allows the module list endpoints.
-- If OdooIndex's server data were leaked, someone could see which modules you have installed and their versions. For most organizations this is low-risk, but if you use custom modules with revealing names or summaries, that information would be exposed.
+- If OdooIndex's server data were leaked, someone could see which modules you have installed and their versions.
+  For most organizations this is low-risk, but if you use custom modules with revealing names or short descriptions,
+  that information would be exposed.
 - The database UUID by itself does not grant access to your Odoo system.
 
 How we reduce risk
@@ -102,11 +104,11 @@ Request body:
       "modules": [
         {
           "name": "base",
+          "shortdesc": "Base module",
           "version": "19.0.1.0",
           "author": "Odoo S.A.",
           "website": "https://www.odoo.com",
-          "license": "LGPL-3",
-          "summary": "Base module"
+          "license": "LGPL-3"
         }
       ]
     }
@@ -137,15 +139,7 @@ Expected response:
           "name": "my_module",
           "latest_version": "19.0.2.0",
           "target_version": "19.0",
-          "migration_status": "ready",
-          "pull_requests": [
-            {
-              "title": "[MIG] my_module: migrate to 19.0",
-              "url": "https://github.com/OCA/.../pull/123",
-              "state": "open",
-              "version": "19.0.2.0"
-            }
-          ]
+          "migration_status": "ready"
         }
       ]
     }
