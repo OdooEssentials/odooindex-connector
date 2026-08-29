@@ -5,8 +5,7 @@ import urllib.parse
 import urllib.request
 
 import odoo
-
-from odoo import _, api, fields, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
@@ -21,7 +20,6 @@ class OdooIndexModuleInfo(models.Model):
 
     module_id = fields.Many2one(
         "ir.module.module",
-        string="Module",
         index=True,
         ondelete="cascade",
     )
@@ -36,8 +34,8 @@ class OdooIndexModuleInfo(models.Model):
         store=True,
         readonly=True,
     )
-    latest_version = fields.Char(string="Latest Version")
-    target_version = fields.Char(string="Target Version")
+    latest_version = fields.Char()
+    target_version = fields.Char()
     migration_status = fields.Selection(
         [
             ("unknown", "Unknown"),
@@ -53,7 +51,7 @@ class OdooIndexModuleInfo(models.Model):
         "info_id",
         string="Pull Requests",
     )
-    last_sync = fields.Datetime(string="Last Sync")
+    last_sync = fields.Datetime()
 
     _sql_constraints = [
         (
@@ -87,9 +85,9 @@ class OdooIndexModuleInfo(models.Model):
         """Make an authenticated HTTPS request to the OdooIndex API."""
         config = self._get_config()
         if not config["api_token"]:
-            raise UserError(_("OdooIndex API token must be configured."))
+            raise UserError(self.env._("OdooIndex API token must be configured."))
 
-        url = "{}{}".format(ODOOINDEX_API_URL, path)
+        url = f"{ODOOINDEX_API_URL}{path}"
         data = None
         headers = {
             "Authorization": "Bearer {}".format(config["api_token"]),
@@ -99,29 +97,29 @@ class OdooIndexModuleInfo(models.Model):
         if payload is not None:
             data = json.dumps(payload).encode("utf-8")
 
-        request = urllib.request.Request(
-            url, data=data, headers=headers, method=method
-        )
+        request = urllib.request.Request(url, data=data, headers=headers, method=method)
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
                 return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8") if exc else ""
-            raise UserError(_("OdooIndex API error: %s", body)) from exc
+            raise UserError(self.env._("OdooIndex API error: %s", body)) from exc
         except Exception as exc:
-            raise UserError(_("OdooIndex request failed: %s", str(exc))) from exc
+            raise UserError(
+                self.env._("OdooIndex request failed: %s", str(exc))
+            ) from exc
 
     @api.model
     def _build_inventory_payload(self):
         """Build the payload sent to OdooIndex: only module metadata."""
         uuid = self._get_db_uuid()
         if not uuid:
-            raise UserError(_("Database UUID not found."))
+            raise UserError(self.env._("Database UUID not found."))
 
         config = self._get_config()
         modules = []
-        for module in self.env["ir.module.module"].sudo().search(
-            [("state", "=", "installed")]
+        for module in (
+            self.env["ir.module.module"].sudo().search([("state", "=", "installed")])
         ):
             modules.append(
                 {
@@ -157,14 +155,12 @@ class OdooIndexModuleInfo(models.Model):
         """Download migration/update information for the configured target version."""
         uuid = self._get_db_uuid()
         if not uuid:
-            raise UserError(_("Database UUID not found."))
+            raise UserError(self.env._("Database UUID not found."))
 
         config = self._get_config()
-        params = urllib.parse.urlencode(
-            {"target_version": config["target_version"]}
-        )
+        params = urllib.parse.urlencode({"target_version": config["target_version"]})
         return self._odooindex_request(
-            "/instances/{}/updates?{}".format(uuid, params),
+            f"/instances/{uuid}/updates?{params}",
             method="GET",
         )
 

@@ -15,5 +15,5 @@ class OdooIndexModulePR(models.Model):
     )
     name = fields.Char(string="Title", required=True)
     url = fields.Char(string="URL")
-    state = fields.Char(string="State")
-    version = fields.Char(string="Version")
+    state = fields.Char()
+    version = fields.Char()

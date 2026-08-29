@@ -1,4 +1,4 @@
-from odoo import _, fields, models
+from odoo import fields, models
 
 
 class ResConfigSettings(models.TransientModel):
@@ -20,7 +20,7 @@ class ResConfigSettings(models.TransientModel):
         self.ensure_one()
         return {
             "type": "ir.actions.act_window",
-            "name": _("Connect to OdooIndex"),
+            "name": self.env._("Connect to OdooIndex"),
             "res_model": "odooindex.connector.pair.wizard",
             "view_mode": "form",
             "target": "new",
@@ -34,8 +34,8 @@ class ResConfigSettings(models.TransientModel):
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
-                "title": _("OdooIndex sync"),
-                "message": _(
+                "title": self.env._("OdooIndex sync"),
+                "message": self.env._(
                     "Module inventory and updates have been synchronized."
                 ),
                 "type": "success",
