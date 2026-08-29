@@ -11,6 +11,12 @@
             >
                 <block title="OdooIndex" name="odooindex_setting_container">
                     <setting
+                        string="Instance Name"
+                        help="Name shown on the OdooIndex instance list"
+                    >
+                        <field name="odooindex_instance_name" />
+                    </setting>
+                    <setting
                         string="Connection"
                         help="Manage the connection to OdooIndex"
                     >
@@ -37,12 +43,6 @@
                         help="Target Odoo version for migration analysis"
                     >
                         <field name="odooindex_target_version" />
-                    </setting>
-                    <setting
-                        string="Instance Name"
-                        help="Name shown on the OdooIndex instance list"
-                    >
-                        <field name="odooindex_instance_name" />
                     </setting>
                 </block>
             </xpath>
