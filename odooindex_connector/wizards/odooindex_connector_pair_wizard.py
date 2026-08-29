@@ -57,6 +57,7 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
+            "User-Agent": "OdooIndexConnector/19.0",
         }
         if payload is not None:
             data = json.dumps(payload).encode("utf-8")
