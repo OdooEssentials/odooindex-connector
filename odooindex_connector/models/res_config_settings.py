@@ -14,6 +14,14 @@ class ResConfigSettings(models.TransientModel):
         config_parameter="odooindex_connector.target_version",
         help="Target Odoo version to check migration readiness for (e.g. 19.0).",
     )
+    odooindex_instance_name = fields.Char(
+        string="Instance Name",
+        config_parameter="odooindex_connector.instance_name",
+        help=(
+            "Display name for this instance on OdooIndex "
+            "(defaults to the database name)."
+        ),
+    )
 
     def action_open_odooindex_pair_wizard(self):
         """Open the pairing wizard from the settings screen."""
@@ -29,15 +37,14 @@ class ResConfigSettings(models.TransientModel):
     def action_sync_modules(self):
         """Trigger a manual OdooIndex sync and show a notification."""
         self.ensure_one()
-        self.env["odooindex.module.info"].action_sync()
+        result = self.env["odooindex.module.info"].action_sync()
+        count = (result or {}).get("module_count", 0)
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
                 "title": self.env._("OdooIndex sync"),
-                "message": self.env._(
-                    "Module inventory and updates have been synchronized."
-                ),
+                "message": self.env._("Synchronized %d modules.", count),
                 "type": "success",
                 "sticky": False,
             },

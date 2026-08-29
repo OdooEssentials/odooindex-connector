@@ -1,7 +1,6 @@
 import json
 import logging
 import urllib.error
-import urllib.parse
 import urllib.request
 
 import odoo
@@ -73,6 +72,8 @@ class OdooIndexModuleInfo(models.Model):
         return {
             "api_token": icp.get_param("odooindex_connector.api_token") or "",
             "target_version": icp.get_param("odooindex_connector.target_version") or "",
+            "instance_name": icp.get_param("odooindex_connector.instance_name")
+            or self.env.cr.dbname,
         }
 
     @api.model
@@ -134,7 +135,7 @@ class OdooIndexModuleInfo(models.Model):
 
         return {
             "uuid": uuid,
-            "name": self.env.cr.dbname,
+            "name": config["instance_name"],
             "odoo_version": odoo.release.series,
             "target_version": config["target_version"],
             "modules": modules,
@@ -142,13 +143,42 @@ class OdooIndexModuleInfo(models.Model):
 
     @api.model
     def _upload_inventory(self):
-        """Upload the current installed module inventory to OdooIndex."""
+        """Upload the current installed module inventory to OdooIndex.
+
+        The payload is split into chunks to stay within the server's
+        per-request module limit. Chunks are uploaded sequentially; the server
+        stores partial chunks and finalises the inventory when the last one
+        arrives.
+        """
         payload = self._build_inventory_payload()
-        return self._odooindex_request(
-            "/instances/inventory",
-            method="POST",
-            payload=payload,
-        )
+        modules = payload["modules"]
+        chunk_size = 200
+        total_chunks = max(1, (len(modules) + chunk_size - 1) // chunk_size)
+
+        for index in range(total_chunks):
+            chunk = modules[index * chunk_size : (index + 1) * chunk_size]
+            chunk_payload = {
+                "uuid": payload["uuid"],
+                "name": payload["name"],
+                "odoo_version": payload["odoo_version"],
+                "target_version": payload["target_version"],
+                "modules": chunk,
+                "chunk_index": index,
+                "total_chunks": total_chunks,
+            }
+            result = self._odooindex_request(
+                "/instances/inventory",
+                method="POST",
+                payload=chunk_payload,
+            )
+            if not result:
+                raise UserError(self.env._("OdooIndex inventory upload failed."))
+            if result.get("status") == "completed":
+                return result
+            if result.get("status") != "chunk_received":
+                raise UserError(self.env._("Unexpected upload response: %s", result))
+
+        return result
 
     @api.model
     def _download_updates(self):
@@ -158,10 +188,13 @@ class OdooIndexModuleInfo(models.Model):
             raise UserError(self.env._("Database UUID not found."))
 
         config = self._get_config()
-        params = urllib.parse.urlencode({"target_version": config["target_version"]})
         return self._odooindex_request(
-            f"/instances/{uuid}/updates?{params}",
-            method="GET",
+            "/instances/updates",
+            method="POST",
+            payload={
+                "uuid": uuid,
+                "target_version": config["target_version"],
+            },
         )
 
     @api.model
@@ -211,10 +244,13 @@ class OdooIndexModuleInfo(models.Model):
     @api.model
     def action_sync(self):
         """Run the full sync: upload inventory then download updates."""
-        self._upload_inventory()
+        upload_result = self._upload_inventory() or {}
         updates = self._download_updates()
         self._apply_updates(updates)
-        return True
+        return {
+            "success": True,
+            "module_count": upload_result.get("module_count", 0),
+        }
 
     @api.model
     def action_sync_cron(self):

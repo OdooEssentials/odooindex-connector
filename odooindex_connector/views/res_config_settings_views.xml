@@ -39,6 +39,10 @@
                                     <span class="o_form_label">Target Version</span>
                                     <field name="odooindex_target_version" />
                                 </div>
+                                <div class="content-group">
+                                    <span class="o_form_label">Instance Name</span>
+                                    <field name="odooindex_instance_name" />
+                                </div>
                             </div>
                         </div>
                     </div>
