@@ -4,17 +4,29 @@
         <field name="name">odooindex.connector.pair.wizard.form</field>
         <field name="model">odooindex.connector.pair.wizard</field>
         <field name="arch" type="xml">
-            <form string="Connect to OdooIndex">
+            <form string="Pairing with OdooIndex">
                 <sheet>
                     <group>
                         <field name="instance_name" />
                     </group>
                     <div invisible="status != 'pending'" class="oe_inline">
                         <p class="text-muted">
-              Scan the QR code or open the link on any device and sign in with your OdooIndex account.
+              Open the link on any device and sign in with your OdooIndex account, then scan the QR code.
             </p>
-                        <field name="pairing_url" widget="url" readonly="1" />
-                        <field name="qr_code" widget="image" readonly="1" />
+                        <field
+                            name="pairing_url"
+                            widget="url"
+                            readonly="1"
+                            text="Open pairing page"
+                        />
+                        <div class="text-center mt-3">
+                            <field
+                                name="qr_code"
+                                widget="image"
+                                readonly="1"
+                                nolabel="1"
+                            />
+                        </div>
                     </div>
                     <div invisible="status != 'awaiting_pin'" class="oe_inline">
                         <p class="text-muted">
