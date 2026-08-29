@@ -51,7 +51,7 @@
                     />
                     <button
                         name="action_check_status"
-                        string="Check Login"
+                        string="Refresh"
                         type="object"
                         invisible="status != 'pending' and status != 'awaiting_pin'"
                     />
