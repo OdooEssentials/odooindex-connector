@@ -1,0 +1,19 @@
+{
+    "name": "OdooIndex Connector",
+    "version": "19.0.1.0.0",
+    "category": "Tools",
+    "summary": "Sync installed module inventory and migration readiness with OdooIndex.com",
+    "author": "OdooEssentials",
+    "website": "https://github.com/OdooEssentials/odooindex_connector",
+    "license": "LGPL-3",
+    "depends": ["base"],
+    "data": [
+        "security/ir.model.access.csv",
+        "data/ir_cron_data.xml",
+        "views/res_config_settings_views.xml",
+        "views/odooindex_module_info_views.xml",
+    ],
+    "installable": True,
+    "application": False,
+    "auto_install": False,
+}
