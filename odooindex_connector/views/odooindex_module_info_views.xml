@@ -59,12 +59,7 @@
         </field>
     </record>
 
-    <menuitem
-        id="menu_odooindex_root"
-        name="OdooIndex"
-        parent="base.menu_main"
-        sequence="200"
-    />
+    <menuitem id="menu_odooindex_root" name="OdooIndex" sequence="200" />
     <menuitem
         id="menu_odooindex_module_info"
         name="Module Updates"
