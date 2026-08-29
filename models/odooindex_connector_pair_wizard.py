@@ -48,6 +48,7 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
 
     @api.model
     def _odooindex_request(self, path, method="GET", payload=None, timeout=30):
+        """Make an authenticated request to the OdooIndex API."""
         if not self.api_url:
             raise UserError(_("OdooIndex API URL must be configured."))
 
@@ -74,11 +75,13 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
 
     @api.model
     def _get_db_uuid(self):
+        """Return the Odoo database UUID used to identify this instance."""
         return (
             self.env["ir.config_parameter"].sudo().get_param("database.uuid")
         )
 
     def _render_qr_code(self, url):
+        """Render a URL as a base64-encoded PNG QR code, if qrcode is installed."""
         if not qrcode or not url:
             return False
         try:
@@ -91,6 +94,7 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
             return False
 
     def _reopen_wizard(self):
+        """Return an action that reopens the current transient wizard record."""
         self.ensure_one()
         return {
             "type": "ir.actions.act_window",
@@ -102,6 +106,7 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
         }
 
     def action_start_pairing(self):
+        """Start the pairing handshake and show the QR code/link."""
         self.ensure_one()
         uuid = self._get_db_uuid()
         if not uuid:
@@ -127,6 +132,7 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
         return self._reopen_wizard()
 
     def action_check_status(self):
+        """Poll OdooIndex for the pairing status."""
         self.ensure_one()
         if not self.pairing_id:
             raise UserError(_("Start pairing first."))
@@ -149,6 +155,7 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
         return self._reopen_wizard()
 
     def action_verify_pin(self):
+        """Verify the PIN and store the returned API token."""
         self.ensure_one()
         if not self.pairing_id or not self.pin:
             raise UserError(_("Pairing ID and PIN are required."))
@@ -171,6 +178,9 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
 
         token = result.get("api_token")
         if token:
+            # Store the bearer token in ir.config_parameter. It is only readable
+            # by the Administration/Settings group, the same group that can
+            # install modules and configure this wizard.
             self.env["ir.config_parameter"].sudo().set_param(
                 "odooindex_connector.api_token", token
             )

@@ -47,11 +47,35 @@ A scheduled action runs `odooindex.module.info.action_sync()` once a day (inacti
 - *Settings → General Settings → OdooIndex Connector* to configure the API URL, token, and target version.
 - *OdooIndex → Module Updates* menu shows installed modules with installed version, latest available version, migration status, and PR count.
 
-### Security
+### Security & Privacy
 
-- The API token is stored as an `ir.config_parameter` and exposed only to the *Administration / Settings* group.
-- All communication with OdooIndex uses HTTPS.
-- Only module metadata is sent (name, version, author, etc.). No business data or records leave the instance.
+This section explains, in plain language, what the connector does with your data.
+
+**What the module does**
+
+- It sends a list of the *installed modules* on your Odoo instance (names, versions, authors, licenses and short summaries) to OdooIndex.com.
+- It sends your Odoo `database.uuid`. This is a random-looking identifier Odoo creates for the database; it is used so OdooIndex can match the uploaded list to your account.
+- It does **not** send business records, customer data, documents, emails, passwords, user lists, or any information from inside the modules.
+- It downloads migration and update information for those modules (e.g. "module X is ready for Odoo 19.0") and stores it inside your Odoo database.
+
+**What is stored on OdooIndex**
+
+- Your GitHub login and email (from signing in).
+- The module list described above, linked to your account and your database UUID.
+- An API token hash (not the token itself) so the module can authenticate future uploads.
+
+**What could go wrong?**
+
+- If the API token stored in your Odoo database was leaked, an attacker could upload a fake module list or read migration status for that instance. They could **not** access your Odoo server or business data, because the token only allows the module list endpoints.
+- If OdooIndex's server data were leaked, someone could see which modules you have installed and their versions. For most organizations this is low-risk, but if you use custom modules with revealing names or summaries, that information would be exposed.
+- The database UUID by itself does not grant access to your Odoo system.
+
+**How we reduce risk**
+
+- Communication is always over HTTPS.
+- The API token is stored as an `ir.config_parameter` and is only visible to the *Administration / Settings* group.
+- Pairing uses a one-time link, browser login, and a short-lived PIN, so the token is only handed to the Odoo instance that started the pairing.
+- You can stop syncing at any time by removing or disabling the scheduled action.
 
 ## OdooIndex API Contract
 

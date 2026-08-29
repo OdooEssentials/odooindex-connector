@@ -21,6 +21,7 @@ class ResConfigSettings(models.TransientModel):
     )
 
     def action_open_odooindex_pair_wizard(self):
+        """Open the pairing wizard from the settings screen."""
         self.ensure_one()
         return {
             "type": "ir.actions.act_window",
