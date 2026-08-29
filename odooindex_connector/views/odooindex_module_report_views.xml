@@ -73,8 +73,9 @@
     <menuitem
         id="menu_odooindex_report"
         name="OdooIndex Module Updates"
+        parent="base.menu_apps"
         action="action_odooindex_module_report"
-        sequence="200"
+        sequence="25"
         groups="base.group_system"
     />
 </odoo>
