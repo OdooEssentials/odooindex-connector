@@ -13,12 +13,15 @@
                         <p class="text-muted">
               Open the link on any device and sign in with your OdooIndex account, then scan the QR code.
             </p>
-                        <field
-                            name="pairing_url"
-                            widget="url"
-                            readonly="1"
-                            text="Open pairing page"
-                        />
+                        <div class="text-center mt-3">
+                            <field
+                                name="pairing_url"
+                                widget="url"
+                                readonly="1"
+                                text="Get pairing PIN number"
+                                nolabel="1"
+                            />
+                        </div>
                         <div class="text-center mt-3">
                             <field
                                 name="qr_code"
