@@ -14,7 +14,7 @@
               Scan the QR code or open the link on any device and sign in with your OdooIndex account.
             </p>
                         <field name="pairing_url" widget="url" readonly="1" />
-                        <field name="qr_code" widget="image" readonly="1" nolabel="1" />
+                        <field name="qr_code" widget="image" readonly="1" />
                     </div>
                     <div invisible="status != 'awaiting_pin'" class="oe_inline">
                         <p class="text-muted">
