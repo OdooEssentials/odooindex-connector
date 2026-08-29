@@ -1,4 +1,4 @@
-from odoo import fields, models
+from odoo import _, fields, models
 
 
 class ResConfigSettings(models.TransientModel):
@@ -19,3 +19,21 @@ class ResConfigSettings(models.TransientModel):
         config_parameter="odooindex_connector.target_version",
         help="Target Odoo version to check migration readiness for (e.g. 19.0).",
     )
+
+    def action_open_odooindex_pair_wizard(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Connect to OdooIndex"),
+            "res_model": "odooindex.connector.pair.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_api_url": (
+                    self.env["ir.config_parameter"]
+                    .sudo()
+                    .get_param("odooindex_connector.api_url")
+                    or "https://odooindex.com/api/v1"
+                ),
+            },
+        }

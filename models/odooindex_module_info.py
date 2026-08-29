@@ -3,6 +3,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import odoo
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
@@ -126,6 +128,8 @@ class OdooIndexModuleInfo(models.Model):
 
         return {
             "uuid": uuid,
+            "name": self.env.cr.dbname,
+            "odoo_version": odoo.release.series,
             "target_version": config["target_version"],
             "modules": modules,
         }
