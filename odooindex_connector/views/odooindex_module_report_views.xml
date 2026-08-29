@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
-    <record id="view_module_tree_inherit_odooindex" model="ir.ui.view">
-        <field name="name">ir.module.module.list.inherit.odooindex</field>
+    <record id="view_odooindex_module_report_tree" model="ir.ui.view">
+        <field name="name">odooindex.module.report.tree</field>
         <field name="model">ir.module.module</field>
-        <field name="inherit_id" ref="base.module_tree" />
         <field name="arch" type="xml">
-            <field name="state" position="after">
+            <list>
+                <field name="name" />
+                <field name="author" />
+                <field name="latest_version" string="Installed Version" />
                 <field name="odooindex_target_version" />
                 <field name="odooindex_latest_version" />
                 <field name="odooindex_has_update" />
@@ -17,16 +19,17 @@
                     decoration-danger="odooindex_migration_status == 'not_ready'"
                 />
                 <field name="odooindex_last_sync" />
-            </field>
+            </list>
         </field>
     </record>
 
-    <record id="view_module_filter_inherit_odooindex" model="ir.ui.view">
-        <field name="name">ir.module.module.search.inherit.odooindex</field>
+    <record id="view_odooindex_module_report_filter" model="ir.ui.view">
+        <field name="name">odooindex.module.report.search</field>
         <field name="model">ir.module.module</field>
-        <field name="inherit_id" ref="base.view_module_filter" />
         <field name="arch" type="xml">
-            <field name="name" position="after">
+            <search>
+                <field name="name" />
+                <field name="author" />
                 <separator />
                 <filter
                     name="odooindex_has_update"
@@ -49,7 +52,29 @@
                     domain="[('odooindex_pr_count', '>', 0)]"
                 />
                 <separator />
-            </field>
+                <filter
+                    name="installed"
+                    string="Installed"
+                    domain="[('state', '=', 'installed')]"
+                />
+            </search>
         </field>
     </record>
+
+    <record id="action_odooindex_module_report" model="ir.actions.act_window">
+        <field name="name">OdooIndex Module Updates</field>
+        <field name="res_model">ir.module.module</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_odooindex_module_report_tree" />
+        <field name="search_view_id" ref="view_odooindex_module_report_filter" />
+        <field name="domain">[("state", "=", "installed")]</field>
+    </record>
+
+    <menuitem
+        id="menu_odooindex_report"
+        name="OdooIndex Module Updates"
+        action="action_odooindex_module_report"
+        sequence="200"
+        groups="base.group_system"
+    />
 </odoo>

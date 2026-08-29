@@ -3,10 +3,7 @@ OdooIndex Connector
 
 Connects an Odoo instance to `OdooIndex.com <https://odooindex.com>`_ so the installed module inventory and version/migration status can be tracked and viewed on your Odoo instance or on your OdooIndex account page.
 
-Purpose
--------
-
-The module periodically:
+Periodically:
 
 1. **Uploads** a list of installed modules and their versions, linked to the Odoo ``database.uuid``, to your OdooIndex.com private account.
 2. **Downloads** information about available updates and migration readiness for a configurable target Odoo version.
@@ -17,9 +14,7 @@ Usage
 
 1. Go to *Settings → General Settings → OdooIndex Connector* and fill in the API token and target version.
 2. The scheduled action *OdooIndex: sync modules* runs once a day by default.
-
-- *Settings → General Settings → OdooIndex Connector* to configure the API token and target version.
-- *OdooIndex → Module Updates* menu shows installed modules with installed version, latest available version, migration status, and PR count.
+3. After the first sync, open *Reporting → OdooIndex Module Updates* to see installed modules with their latest OCA version, migration status, PR count, and last sync. Use the filters to find modules with updates, migration-ready modules, or modules not yet in OdooIndex.
 
 Design Overview
 ---------------
@@ -40,16 +35,17 @@ Settings are stored in ``ir.config_parameter`` and exposed through *Settings →
 Sync flow
 ~~~~~~~~~
 
-A scheduled action runs ``odooindex.module.info.action_sync_cron()`` once a day (active by default). It skips the sync and logs a warning when the database is neutralized (``database.is_neutralized``), while manual sync remains available from the settings page.
+A scheduled action runs ``ir.module.module.action_sync_cron()`` once a day (active by default). It skips the sync and logs a warning when the database is neutralized (``database.is_neutralized``), while manual sync remains available from the settings page.
 
 1. **Upload inventory**
    - ``POST /instances/inventory``
    - Payload: ``uuid``, ``target_version``, and the list of installed modules with ``name``, ``version``, ``author``, ``website``, ``license``, and ``summary``.
 2. **Download updates**
-   - ``GET /instances/{uuid}/updates?target_version={target_version}``
-   - Response: per-module ``latest_version``, ``migration_status``, and an array of ``pull_requests``.
+   - ``POST /instances/updates``
+   - Payload: ``uuid`` and ``target_version``.
+   - Response: per-module ``latest_version``, ``target_version``, ``migration_status``, and an array of ``pull_requests``.
 3. **Store**
-   - Update or create ``odooindex.module.info`` records and replace the related ``odooindex.module.pr`` records.
+   - Update the matching ``ir.module.module`` records with the latest OCA version, target version, migration status, PR count, and last sync timestamp.
 
 Security & Privacy
 ------------------
@@ -117,14 +113,19 @@ Request body:
 
 Expected response: ``200 OK`` with an empty JSON object or a simple status.
 
-GET /instances/{uuid}/updates
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+POST /instances/updates
+~~~~~~~~~~~~~~~~~~~~~~~
 
 Download available updates for the configured target version.
 
-Query parameters:
+Request body:
 
-- ``target_version`` (string) — e.g. ``19.0``
+.. code-block:: json
+
+    {
+      "uuid": "uuid-of-the-odoo-database",
+      "target_version": "19.0"
+    }
 
 Expected response:
 
