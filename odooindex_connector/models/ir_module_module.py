@@ -12,54 +12,50 @@ _logger = logging.getLogger(__name__)
 ODOOINDEX_API_URL = "https://odooindex.com/api/v1"
 
 
-class OdooIndexModuleInfo(models.Model):
-    _name = "odooindex.module.info"
-    _description = "OdooIndex Module Update Info"
-    _order = "name"
+class IrModuleModule(models.Model):
+    _inherit = "ir.module.module"
 
-    module_id = fields.Many2one(
-        "ir.module.module",
-        index=True,
-        ondelete="cascade",
+    odooindex_latest_version = fields.Char(
+        string="Latest OCA Version",
+        help="Latest version available in OCA for the configured target Odoo.",
     )
-    name = fields.Char(
-        string="Technical Name",
-        index=True,
-        required=True,
+    odooindex_target_version = fields.Char(
+        string="Target Version",
+        help="Odoo version this module information was checked for.",
     )
-    installed_version = fields.Char(
-        related="module_id.latest_version",
-        string="Installed Version",
-        store=True,
-        readonly=True,
-    )
-    latest_version = fields.Char()
-    target_version = fields.Char()
-    migration_status = fields.Selection(
+    odooindex_migration_status = fields.Selection(
         [
             ("unknown", "Unknown"),
             ("not_ready", "Not Ready"),
             ("in_progress", "In Progress"),
             ("ready", "Ready"),
         ],
+        string="Migration Status",
         default="unknown",
     )
-    pr_count = fields.Integer(string="PRs", default=0)
-    pr_ids = fields.One2many(
-        "odooindex.module.pr",
-        "info_id",
-        string="Pull Requests",
+    odooindex_pr_count = fields.Integer(
+        string="Open PRs",
+        default=0,
+        help="Number of open OCA pull requests for this module.",
     )
-    last_sync = fields.Datetime()
+    odooindex_last_sync = fields.Datetime(
+        string="Last OdooIndex Sync",
+    )
+    odooindex_has_update = fields.Boolean(
+        string="Has Update",
+        compute="_compute_odooindex_has_update",
+        store=True,
+        help="True when a newer version is available.",
+    )
 
-    _module_id_unique = models.Constraint(
-        "UNIQUE(module_id)",
-        "A module can only have one OdooIndex info record.",
-    )
-    _name_unique = models.Constraint(
-        "UNIQUE(name)",
-        "A module technical name can only be tracked once.",
-    )
+    @api.depends("latest_version", "odooindex_latest_version")
+    def _compute_odooindex_has_update(self):
+        for module in self:
+            module.odooindex_has_update = bool(
+                module.odooindex_latest_version
+                and module.latest_version
+                and module.odooindex_latest_version != module.latest_version
+            )
 
     @api.model
     def _get_config(self):
@@ -115,9 +111,7 @@ class OdooIndexModuleInfo(models.Model):
 
         config = self._get_config()
         modules = []
-        for module in (
-            self.env["ir.module.module"].sudo().search([("state", "=", "installed")])
-        ):
+        for module in self.sudo().search([("state", "=", "installed")]):
             modules.append(
                 {
                     "name": module.name,
@@ -201,7 +195,6 @@ class OdooIndexModuleInfo(models.Model):
         if not updates:
             return
 
-        Module = self.env["ir.module.module"].sudo()
         now = fields.Datetime.now()
 
         for item in updates:
@@ -209,33 +202,21 @@ class OdooIndexModuleInfo(models.Model):
             if not name:
                 continue
 
-            module = Module.search([("name", "=", name)], limit=1)
-            vals = {
-                "module_id": module.id,
-                "name": name,
-                "latest_version": item.get("latest_version", ""),
-                "target_version": item.get("target_version", ""),
-                "migration_status": item.get("migration_status", "unknown"),
-                "pr_count": len(item.get("pull_requests", [])),
-                "last_sync": now,
-            }
-            info = self.search([("name", "=", name)], limit=1)
-            if info:
-                info.write(vals)
-            else:
-                info = self.create(vals)
+            module = self.sudo().search([("name", "=", name)], limit=1)
+            if not module:
+                continue
 
-            info.pr_ids.unlink()
-            for pr in item.get("pull_requests", []):
-                self.env["odooindex.module.pr"].sudo().create(
-                    {
-                        "info_id": info.id,
-                        "name": pr.get("title", ""),
-                        "url": pr.get("url", ""),
-                        "state": pr.get("state", ""),
-                        "version": pr.get("version", ""),
-                    }
-                )
+            module.sudo().write(
+                {
+                    "odooindex_latest_version": item.get("latest_version", ""),
+                    "odooindex_target_version": item.get("target_version", ""),
+                    "odooindex_migration_status": item.get(
+                        "migration_status", "unknown"
+                    ),
+                    "odooindex_pr_count": len(item.get("pull_requests", [])),
+                    "odooindex_last_sync": now,
+                }
+            )
 
     @api.model
     def action_sync(self):
