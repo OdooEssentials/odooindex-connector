@@ -6,7 +6,7 @@
     "author": "Daniel Reis,OdooIndex.com",
     "website": "https://github.com/OdooEssentials/odooindex_connector",
     "license": "LGPL-3",
-    "depends": ["base"],
+    "depends": ["base", "base_setup"],
     "data": [
         "security/ir.model.access.csv",
         "data/ir_cron_data.xml",

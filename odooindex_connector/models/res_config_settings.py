@@ -23,15 +23,10 @@ class ResConfigSettings(models.TransientModel):
     )
 
     def action_open_odooindex_pair_wizard(self):
-        """Open the pairing wizard from the settings screen."""
+        """Start pairing immediately from the settings screen."""
         self.ensure_one()
-        return {
-            "type": "ir.actions.act_window",
-            "name": self.env._("Connect to OdooIndex"),
-            "res_model": "odooindex.connector.pair.wizard",
-            "view_mode": "form",
-            "target": "new",
-        }
+        wizard = self.env["odooindex.connector.pair.wizard"].create({})
+        return wizard.action_start_pairing()
 
     def action_sync_modules(self):
         """Trigger a manual OdooIndex sync and show a notification."""

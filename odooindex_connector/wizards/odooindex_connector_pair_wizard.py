@@ -126,7 +126,8 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
         )
         self.pairing_id = result.get("pairing_id")
         self.pairing_secret = result.get("pairing_secret")
-        self.pairing_url = result.get("pairing_url")
+        base_url = ODOOINDEX_API_URL.rsplit("/api/v1", 1)[0]
+        self.pairing_url = f"{base_url}/pair?code={self.pairing_id}"
         self.status = "pending"
         self.message = self.env._(
             "Open the link or scan the QR code, sign in with your OdooIndex account, "
