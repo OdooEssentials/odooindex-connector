@@ -119,7 +119,6 @@ class IrModuleModule(models.Model):
                     "author": module.author or "",
                     "website": module.website or "",
                     "license": module.license or "",
-                    "summary": module.summary or "",
                 }
             )
 
