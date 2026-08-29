@@ -13,15 +13,13 @@ try:
 except ImportError:
     qrcode = None
 
+ODOOINDEX_API_URL = "https://odooindex.com/api/v1"
+
 
 class OdooIndexConnectorPairWizard(models.TransientModel):
     _name = "odooindex.connector.pair.wizard"
     _description = "OdooIndex Pairing Wizard"
 
-    api_url = fields.Char(
-        string="API URL",
-        default="https://odooindex.com/api/v1",
-    )
     instance_name = fields.Char(
         string="Instance Name",
         default=lambda self: self.env.cr.dbname,
@@ -49,10 +47,7 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
     @api.model
     def _odooindex_request(self, path, method="GET", payload=None, timeout=30):
         """Make an authenticated request to the OdooIndex API."""
-        if not self.api_url:
-            raise UserError(_("OdooIndex API URL must be configured."))
-
-        url = "{}{}".format(self.api_url.rstrip("/"), path)
+        url = "{}{}".format(ODOOINDEX_API_URL, path)
         data = None
         headers = {
             "Accept": "application/json",
