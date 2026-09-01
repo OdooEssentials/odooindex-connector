@@ -145,3 +145,26 @@ Expected response:
     }
 
 ``migration_status`` should be one of: ``unknown``, ``not_ready``, ``in_progress``, ``ready``.
+
+Command-line interface
+======================
+
+The connector can also be used as a standalone command-line tool. When
+running inside an Odoo deployment, pass ``-c`` / ``--config`` and ``-d`` / ``--database``
+to bootstrap the Odoo environment. To run without Odoo, provide the values
+via ``--api-token``, ``--target-version``, ``--instance-name`` and ``--uuid``.
+
+Available commands:
+
+* ``upload`` - Upload the module inventory to OdooIndex.
+* ``download`` - Download migration/update data.
+* ``sync`` - Upload and then download updates.
+* ``readiness`` - Check migration readiness.
+* ``pair`` - Start a device pairing request.
+* ``pair-verify`` - Complete pairing with a PIN.
+
+Examples::
+
+    python -m odooindex_connector.cli upload
+    python -m odooindex_connector.cli --config odoo.conf --database mydb sync
+    python -m odooindex_connector.cli --modules-file modules.json --uuid $UUID --target-version 19.0 readiness
