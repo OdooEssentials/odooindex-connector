@@ -149,22 +149,23 @@ Expected response:
 Command-line interface
 ======================
 
-The connector can also be used as a standalone command-line tool. When
-running inside an Odoo deployment, pass ``-c`` / ``--config`` and ``-d`` / ``--database``
-to bootstrap the Odoo environment. To run without Odoo, provide the values
-via ``--api-token``, ``--target-version``, ``--instance-name`` and ``--uuid``.
+The ``clox`` command connects to an Odoo database, pairs with OdooIndex when
+no API token is configured, uploads the installed module inventory, and prints
+a migration readiness report.
 
-Available commands:
+The default operation is fully automatic: if ``odooindex_connector.api_token``
+is not set, ``clox`` starts the device pairing flow, prints the sign-in URL,
+and prompts for the PIN returned by the browser. Additional options can be read
+from environment variables:
 
-* ``upload`` - Upload the module inventory to OdooIndex.
-* ``download`` - Download migration/update data.
-* ``sync`` - Upload and then download updates.
-* ``readiness`` - Check migration readiness.
-* ``pair`` - Start a device pairing request.
-* ``pair-verify`` - Complete pairing with a PIN.
+* ``ODOO_RC`` – Odoo configuration file
+* ``ODOO_DATABASE`` – Odoo database name
+* ``ODOOINDEX_API_TOKEN`` – existing OdooIndex API token
+* ``ODOOINDEX_TARGET_VERSION`` – target Odoo version
+* ``ODOOINDEX_INSTANCE_NAME`` – display name for this instance
+* ``ODOOINDEX_BASE_URL`` – OdooIndex API base URL
 
-Examples::
+Example::
 
-    python -m odooindex_connector.cli upload
-    python -m odooindex_connector.cli --config odoo.conf --database mydb sync
-    python -m odooindex_connector.cli --modules-file modules.json --uuid $UUID --target-version 19.0 readiness
+    python -m odooindex_connector --config odoo.conf --database mydb
+    python -m odooindex_connector -c odoo.conf -d mydb --target-version 19.0 --json
