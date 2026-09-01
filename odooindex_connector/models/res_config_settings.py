@@ -36,6 +36,9 @@ class ResConfigSettings(models.TransientModel):
     def action_sync_modules(self):
         """Trigger a manual OdooIndex sync and show a notification."""
         self.ensure_one()
+        # Force-reload system parameters before syncing, so values written
+        # outside the ORM (e.g. by the clox CLI) are picked up immediately.
+        self.env.registry.clear_cache("default")
         result = self.env["ir.module.module"].sudo().action_sync()
         count = (result or {}).get("module_count", 0)
         return {
