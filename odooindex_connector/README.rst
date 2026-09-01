@@ -145,3 +145,31 @@ Expected response:
     }
 
 ``migration_status`` should be one of: ``unknown``, ``not_ready``, ``in_progress``, ``ready``.
+
+Command-line interface
+======================
+
+The ``clox`` command connects to an Odoo database, pairs with OdooIndex when
+no API token is configured, uploads the installed module inventory, and prints
+a migration readiness report.
+
+The default operation is fully automatic: if ``odooindex_connector.api_token``
+is not set, ``clox`` starts the device pairing flow, prints the sign-in URL,
+and prompts for the PIN returned by the browser. Additional options can be read
+from environment variables:
+
+* ``ODOO_RC`` – Odoo configuration file
+* ``ODOO_DATABASE`` – Odoo database name
+* ``ODOOINDEX_API_TOKEN`` – existing OdooIndex API token
+* ``ODOOINDEX_TARGET_VERSION`` – target Odoo version
+* ``ODOOINDEX_INSTANCE_NAME`` – display name for this instance
+* ``ODOOINDEX_BASE_URL`` – OdooIndex API base URL
+
+Install with pipx::
+
+    pipx install git+https://github.com/OdooEssentials/odooindex-connector.git
+
+Example::
+
+    clox -c /my/config -d mydb
+    clox -c odoo.conf -d mydb --target-version 19.0 --json

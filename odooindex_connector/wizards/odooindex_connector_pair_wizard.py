@@ -1,19 +1,15 @@
 import base64
 import io
-import json
-import urllib.error
-import urllib.parse
-import urllib.request
-
-from odoo import api, fields, models
-from odoo.exceptions import UserError
 
 try:
     import qrcode
 except ImportError:
     qrcode = None
 
-ODOOINDEX_API_URL = "https://odooindex.com/api/v1"
+from odoo import api, fields, models
+from odoo.exceptions import UserError
+
+from ..core import OdooIndexClient, OdooIndexError, PairingService
 
 
 class OdooIndexConnectorPairWizard(models.TransientModel):
@@ -50,30 +46,6 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
     message = fields.Char()
 
     @api.model
-    def _odooindex_request(self, path, method="GET", payload=None, timeout=30):
-        """Make an authenticated request to the OdooIndex API."""
-        url = f"{ODOOINDEX_API_URL}{path}"
-        data = None
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
-        if payload is not None:
-            data = json.dumps(payload).encode("utf-8")
-
-        request = urllib.request.Request(url, data=data, headers=headers, method=method)
-        try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            body = exc.read().decode("utf-8") if exc else ""
-            raise UserError(self.env._("OdooIndex API error: %s", body)) from exc
-        except Exception as exc:
-            raise UserError(
-                self.env._("OdooIndex request failed: %s", str(exc))
-            ) from exc
-
-    @api.model
     def _get_db_uuid(self):
         """Return the Odoo database UUID used to identify this instance."""
         return self.env["ir.config_parameter"].sudo().get_param("database.uuid")
@@ -87,7 +59,7 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
             buffer = io.BytesIO()
             img.save(buffer, format="PNG")
             return base64.b64encode(buffer.getvalue()).decode("ascii")
-        except Exception:
+        except Exception:  # noqa: BLE001
             # QR generation is optional; keep the link available.
             return False
 
@@ -110,14 +82,13 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
         if not uuid:
             raise UserError(self.env._("Database UUID not found."))
 
-        result = self._odooindex_request(
-            "/auth/pair",
-            method="POST",
-            payload={
-                "uuid": uuid,
-                "name": self.instance_name or self.env.cr.dbname,
-            },
-        )
+        service = PairingService(OdooIndexClient())
+        try:
+            result = service.start(uuid, self.instance_name or self.env.cr.dbname)
+        except OdooIndexError as exc:
+            raise UserError(
+                self.env._("OdooIndex pairing failed: %s", str(exc))
+            ) from exc
 
         self.env["ir.config_parameter"].sudo().set_param(
             "odooindex_connector.instance_name",
@@ -140,10 +111,14 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
         if not self.pairing_id:
             raise UserError(self.env._("Start pairing first."))
 
-        result = self._odooindex_request(
-            f"/auth/pair/{self.pairing_id}",
-            method="GET",
-        )
+        service = PairingService(OdooIndexClient())
+        try:
+            result = service.status(self.pairing_id)
+        except OdooIndexError as exc:
+            raise UserError(
+                self.env._("OdooIndex pairing failed: %s", str(exc))
+            ) from exc
+
         status = result.get("status", "pending")
         self.status = status if status in ("pending", "awaiting_pin") else "error"
 
@@ -161,15 +136,13 @@ class OdooIndexConnectorPairWizard(models.TransientModel):
         if not self.pairing_id or not self.pin:
             raise UserError(self.env._("Pairing ID and PIN are required."))
 
-        result = self._odooindex_request(
-            "/auth/pair/verify",
-            method="POST",
-            payload={
-                "pairing_id": self.pairing_id,
-                "pairing_secret": self.pairing_secret,
-                "pin": self.pin,
-            },
-        )
+        service = PairingService(OdooIndexClient())
+        try:
+            result = service.verify(self.pairing_id, self.pairing_secret, self.pin)
+        except OdooIndexError as exc:
+            raise UserError(
+                self.env._("OdooIndex pairing failed: %s", str(exc))
+            ) from exc
 
         if result.get("status") != "completed":
             self.status = "awaiting_pin"
