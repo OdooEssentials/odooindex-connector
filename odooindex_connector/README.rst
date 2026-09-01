@@ -165,7 +165,11 @@ from environment variables:
 * ``ODOOINDEX_INSTANCE_NAME`` – display name for this instance
 * ``ODOOINDEX_BASE_URL`` – OdooIndex API base URL
 
+Install with pipx::
+
+    pipx install git+https://github.com/OdooEssentials/odooindex-connector.git
+
 Example::
 
-    python -m odooindex_connector --config odoo.conf --database mydb
-    python -m odooindex_connector -c odoo.conf -d mydb --target-version 19.0 --json
+    clox -c /my/config -d mydb
+    clox -c odoo.conf -d mydb --target-version 19.0 --json

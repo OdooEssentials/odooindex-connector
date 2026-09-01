@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clox"
+version = "19.0.1.0.0"
+description = "Odoo Index Command Line"
+readme = "README.md"
+license = {text = "LGPL-3"}
+requires-python = ">=3.10"
+dependencies = [
+    "psycopg[binary]>=3.0",
+]
+
+[project.scripts]
+clox = "odooindex_connector.clox:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["odooindex_connector*"]
+
+[tool.setuptools.package-data]
+odooindex_connector = ["*.xml", "*.csv", "data/*", "security/*", "views/*", "wizards/*"]

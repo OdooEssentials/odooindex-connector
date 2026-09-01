@@ -1,9 +1,13 @@
 import argparse
+import configparser
 import contextlib
+import importlib
 import json
 import logging
 import os
+import re
 import sys
+import urllib.parse
 
 from .core import (
     DEFAULT_API_URL,
@@ -31,55 +35,155 @@ def _error(message, *args):
 def _prompt(value, prompt_text):
     if value:
         return value
+    print(prompt_text, end="", file=sys.stderr)
     try:
-        return input(prompt_text)
+        return sys.stdin.readline().rstrip("\n")
     except (EOFError, KeyboardInterrupt):
         print()
         sys.exit(1)
 
 
-def _bootstrap_odoo(config_path, database):
-    import odoo
+def _secure_base_url(base_url):
+    parsed = urllib.parse.urlparse(base_url)
+    if parsed.scheme == "http" and parsed.hostname not in {
+        "localhost",
+        "127.0.0.1",
+        "::1",
+    }:
+        raise OdooIndexError(
+            "Insecure HTTP base URL is only allowed for localhost. "
+            "Use HTTPS or set a local address."
+        )
+    return base_url
 
-    odoo_args = []
-    if config_path:
-        odoo_args.extend(["-c", config_path])
-    if database:
-        odoo_args.extend(["-d", database])
-    odoo.tools.config.parse_config(odoo_args)
-    odoo.service.server.load_server_wide_modules_and_middlewares()
-    registry = odoo.modules.registry.Registry.new(database)
-    cr = registry.cursor()
-    return odoo.api.Environment(cr, odoo.SUPERUSER_ID, {})
+
+class _Database:
+    def __init__(self, config_path, database):
+        self.config_path = config_path
+        self.database = database
+        self._conn = None
+
+    def _dbapi(self):
+        for name in ("psycopg2", "psycopg"):
+            try:
+                return importlib.import_module(name)
+            except ImportError:
+                continue
+        raise OdooIndexError(
+            "A PostgreSQL driver is required. Install psycopg or psycopg2."
+        )
+
+    def _connection_params(self):
+        params = {"dbname": self.database}
+        cfg = configparser.ConfigParser()
+        if self.config_path and os.path.isfile(self.config_path):
+            cfg.read(self.config_path)
+        if cfg.has_option("options", "db_host"):
+            value = cfg.get("options", "db_host")
+            if value:
+                params["host"] = value
+        if cfg.has_option("options", "db_port"):
+            value = cfg.get("options", "db_port")
+            if value:
+                params["port"] = int(value)
+        if cfg.has_option("options", "db_user"):
+            value = cfg.get("options", "db_user")
+            if value:
+                params["user"] = value
+        if cfg.has_option("options", "db_password"):
+            value = cfg.get("options", "db_password")
+            if value:
+                params["password"] = value
+        if cfg.has_option("options", "db_sslmode"):
+            value = cfg.get("options", "db_sslmode")
+            if value:
+                params["sslmode"] = value
+        return params
+
+    def _connect(self):
+        if self._conn is None:
+            self._conn = self._dbapi().connect(**self._connection_params())
+        return self._conn
+
+    def close(self):
+        if self._conn is not None:
+            self._conn.close()
+            self._conn = None
+
+    def get_param(self, key, default=None):
+        conn = self._connect()
+        cur = conn.cursor()
+        cur.execute("SELECT value FROM ir_config_parameter WHERE key = %s", (key,))
+        row = cur.fetchone()
+        cur.close()
+        return row[0] if row else default
+
+    def set_param(self, key, value):
+        conn = self._connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO ir_config_parameter "
+            "(key, value, create_uid, write_uid, create_date, write_date) "
+            "VALUES (%s, %s, 1, 1, now() at time zone 'utc', "
+            "now() at time zone 'utc') "
+            "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "
+            "write_uid = EXCLUDED.write_uid, write_date = EXCLUDED.write_date",
+            (key, value),
+        )
+        conn.commit()
+        cur.close()
+
+    def get_modules(self):
+        conn = self._connect()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT name, COALESCE(shortdesc, '') AS shortdesc, "
+            "COALESCE(latest_version, '') AS latest_version, "
+            "COALESCE(author, '') AS author, "
+            "COALESCE(website, '') AS website, "
+            "COALESCE(license, '') AS license "
+            "FROM ir_module_module WHERE state = 'installed' "
+            "AND name IS NOT NULL"
+        )
+        columns = [desc[0] for desc in cur.description]
+        modules = [dict(zip(columns, row, strict=False)) for row in cur.fetchall()]
+        cur.close()
+        return modules
+
+    def get_odoo_version(self):
+        conn = self._connect()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT COALESCE(latest_version, '') FROM ir_module_module "
+            "WHERE name = 'base' LIMIT 1"
+        )
+        row = cur.fetchone()
+        cur.close()
+        version = row[0] if row else ""
+        match = re.match(r"(\d+\.\d+)", version)
+        return match.group(1) if match else ""
 
 
 @contextlib.contextmanager
-def _managed_env(config_path, database):
-    env = _bootstrap_odoo(config_path, database)
+def _open_db(config_path, database):
+    db = _Database(config_path, database)
     try:
-        yield env
+        yield db
     finally:
-        env.cr.close()
+        db.close()
 
 
-def _env_from_args(args):
-    database = _prompt(args.database, "Odoo database name: ")
-    config_path = args.config or os.environ.get("ODOO_RC")
-    return _managed_env(config_path, database)
-
-
-def _read_config(env, args):
-    icp = env["ir.config_parameter"].sudo()
+def _read_config(db, args):
     api_token = (
         args.api_token
         or os.environ.get("ODOOINDEX_API_TOKEN")
-        or icp.get_param("odooindex_connector.api_token")
+        or db.get_param("odooindex_connector.api_token")
         or ""
     )
     target_version = (
         args.target_version
         or os.environ.get("ODOOINDEX_TARGET_VERSION")
-        or icp.get_param("odooindex_connector.target_version")
+        or db.get_param("odooindex_connector.target_version")
         or ""
     )
     if not target_version:
@@ -90,15 +194,16 @@ def _read_config(env, args):
     instance_name = (
         args.instance_name
         or os.environ.get("ODOOINDEX_INSTANCE_NAME")
-        or icp.get_param("odooindex_connector.instance_name")
-        or env.cr.dbname
+        or db.get_param("odooindex_connector.instance_name")
+        or db.database
     )
     base_url = (
         args.base_url
         or os.environ.get("ODOOINDEX_BASE_URL")
-        or icp.get_param("odooindex_connector.base_url")
+        or db.get_param("odooindex_connector.base_url")
         or DEFAULT_API_URL
     )
+    _secure_base_url(base_url)
     return ConnectorConfig(
         api_token=api_token,
         target_version=target_version,
@@ -107,25 +212,15 @@ def _read_config(env, args):
     )
 
 
-def _get_uuid(env):
-    uuid = env["ir.config_parameter"].sudo().get_param("database.uuid")
+def _get_uuid(db):
+    uuid = db.get_param("database.uuid")
     if not uuid:
         _error("Database UUID not found.")
     return uuid
 
 
-def _get_modules(env):
-    return env["ir.module.module"].sudo().search([("state", "=", "installed")])
-
-
-def _get_odoo_version(env):
-    import odoo
-
-    return odoo.release.series
-
-
-def _pair(env, args, config):
-    uuid = _get_uuid(env)
+def _pair(db, args, config):
+    uuid = _get_uuid(db)
     client = OdooIndexClient(base_url=config.base_url)
     pairing = PairingService(client)
     pairing_id = args.pairing_id
@@ -137,7 +232,7 @@ def _pair(env, args, config):
         pairing_url = result.get("pairing_url")
         if not pairing_id or not pairing_secret:
             _error("Pairing start failed.")
-        print(f"Open this URL to sign in: {pairing_url}")
+        print(f"Open this URL to sign in: {pairing_url}", file=sys.stderr)
     pin = _prompt(args.pin, "Enter pairing PIN: ")
     if not pin:
         _error("PIN is required.")
@@ -145,20 +240,17 @@ def _pair(env, args, config):
     token = result.get("api_token")
     if not token:
         _error("Pairing verification failed.")
-    env["ir.config_parameter"].sudo().set_param("odooindex_connector.api_token", token)
-    env["ir.config_parameter"].sudo().set_param(
-        "odooindex_connector.instance_name", config.instance_name
-    )
-    env.cr.commit()
+    db.set_param("odooindex_connector.api_token", token)
+    db.set_param("odooindex_connector.instance_name", config.instance_name)
     config.api_token = token
     return config
 
 
-def _ensure_token(env, args):
-    config = _read_config(env, args)
+def _ensure_token(db, args):
+    config = _read_config(db, args)
     if config.api_token:
         return config
-    return _pair(env, args, config)
+    return _pair(db, args, config)
 
 
 def _build_report(modules, updates, config):
@@ -201,11 +293,11 @@ def _print_readiness(report):
         )
 
 
-def _run(env, args):
-    config = _ensure_token(env, args)
-    uuid = _get_uuid(env)
-    modules = _get_modules(env)
-    odoo_version = _get_odoo_version(env)
+def _run(db, args):
+    config = _ensure_token(db, args)
+    uuid = _get_uuid(db)
+    modules = db.get_modules()
+    odoo_version = db.get_odoo_version()
     payload = build_inventory_payload(
         uuid=uuid,
         instance_name=config.instance_name,
@@ -272,8 +364,9 @@ def main():
         format="%(asctime)s %(levelname)s %(message)s",
     )
     try:
-        with _env_from_args(args) as env:
-            _run(env, args)
+        database = _prompt(args.database, "Odoo database name: ")
+        with _open_db(args.config, database) as db:
+            _run(db, args)
     except OdooIndexError as exc:
         _error(str(exc))
     except Exception as exc:
