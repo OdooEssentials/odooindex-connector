@@ -45,14 +45,12 @@ def _prompt(value, prompt_text):
 
 def _secure_base_url(base_url):
     parsed = urllib.parse.urlparse(base_url)
-    if parsed.scheme == "http" and parsed.hostname not in {
-        "localhost",
-        "127.0.0.1",
-        "::1",
-    }:
+    if parsed.scheme not in {"https", "http"} or (
+        parsed.scheme == "http"
+        and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}
+    ):
         raise OdooIndexError(
-            "Insecure HTTP base URL is only allowed for localhost. "
-            "Use HTTPS or set a local address."
+            "Base URL scheme must be HTTPS, or HTTP for localhost only."
         )
     return base_url
 
@@ -75,29 +73,30 @@ class _Database:
 
     def _connection_params(self):
         params = {"dbname": self.database}
-        cfg = configparser.ConfigParser()
+        cfg = configparser.ConfigParser(interpolation=None)
         if self.config_path and os.path.isfile(self.config_path):
             cfg.read(self.config_path)
-        if cfg.has_option("options", "db_host"):
-            value = cfg.get("options", "db_host")
-            if value:
-                params["host"] = value
-        if cfg.has_option("options", "db_port"):
-            value = cfg.get("options", "db_port")
-            if value:
-                params["port"] = int(value)
-        if cfg.has_option("options", "db_user"):
-            value = cfg.get("options", "db_user")
-            if value:
-                params["user"] = value
-        if cfg.has_option("options", "db_password"):
-            value = cfg.get("options", "db_password")
-            if value:
-                params["password"] = value
-        if cfg.has_option("options", "db_sslmode"):
-            value = cfg.get("options", "db_sslmode")
-            if value:
-                params["sslmode"] = value
+        for option, param in (
+            ("db_host", "host"),
+            ("db_port", "port"),
+            ("db_user", "user"),
+            ("db_password", "password"),
+            ("db_sslmode", "sslmode"),
+        ):
+            if not cfg.has_option("options", option):
+                continue
+            value = cfg.get("options", option)
+            if not value or value.strip().lower() in {"false", "none"}:
+                continue
+            if param == "port":
+                try:
+                    params[param] = int(value)
+                except ValueError as exc:
+                    raise OdooIndexError(
+                        f"Invalid integer for {option}: {value}"
+                    ) from exc
+            else:
+                params[param] = value
         return params
 
     def _connect(self):
@@ -121,17 +120,34 @@ class _Database:
     def set_param(self, key, value):
         conn = self._connect()
         cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO ir_config_parameter "
-            "(key, value, create_uid, write_uid, create_date, write_date) "
-            "VALUES (%s, %s, 1, 1, now() at time zone 'utc', "
-            "now() at time zone 'utc') "
-            "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "
-            "write_uid = EXCLUDED.write_uid, write_date = EXCLUDED.write_date",
-            (key, value),
-        )
-        conn.commit()
-        cur.close()
+        try:
+            cur.execute(
+                "INSERT INTO ir_config_parameter "
+                "(key, value, create_uid, write_uid, create_date, write_date) "
+                "VALUES (%s, %s, 1, 1, now() at time zone 'utc', "
+                "now() at time zone 'utc') "
+                "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "
+                "write_uid = EXCLUDED.write_uid, write_date = EXCLUDED.write_date",
+                (key, value),
+            )
+            self._signal_cache_invalidation(cur)
+            conn.commit()
+        finally:
+            cur.close()
+
+    def _signal_cache_invalidation(self, cur):
+        try:
+            cur.execute(
+                "SELECT 1 FROM information_schema.tables "
+                "WHERE table_name = 'orm_signaling_default' "
+                "AND table_schema = current_schema()"
+            )
+            if cur.fetchone():
+                cur.execute("INSERT INTO orm_signaling_default DEFAULT VALUES")
+                return
+            cur.execute("SELECT nextval('base_cache_signaling')")
+        except self._dbapi().Error as exc:
+            _logger.debug("Could not signal cache invalidation: %s", exc)
 
     def get_modules(self):
         conn = self._connect()
