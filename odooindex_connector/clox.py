@@ -118,6 +118,10 @@ class _Database:
         return row[0] if row else default
 
     def set_param(self, key, value):
+        # Note: writing directly with SQL avoids importing odoo, so running
+        # Odoo workers may keep cached copies of these parameters until their
+        # cache is refreshed (restart or normal invalidation). This is
+        # acceptable for a pairing token that is consumed by the CLI itself.
         conn = self._connect()
         cur = conn.cursor()
         try:
@@ -130,24 +134,9 @@ class _Database:
                 "write_uid = EXCLUDED.write_uid, write_date = EXCLUDED.write_date",
                 (key, value),
             )
-            self._signal_cache_invalidation(cur)
             conn.commit()
         finally:
             cur.close()
-
-    def _signal_cache_invalidation(self, cur):
-        try:
-            cur.execute(
-                "SELECT 1 FROM information_schema.tables "
-                "WHERE table_name = 'orm_signaling_default' "
-                "AND table_schema = current_schema()"
-            )
-            if cur.fetchone():
-                cur.execute("INSERT INTO orm_signaling_default DEFAULT VALUES")
-                return
-            cur.execute("SELECT nextval('base_cache_signaling')")
-        except self._dbapi().Error as exc:
-            _logger.debug("Could not signal cache invalidation: %s", exc)
 
     def get_modules(self):
         conn = self._connect()
